@@ -5,19 +5,18 @@ type MaterialComposition = [Row]
 
 permeable :: MaterialComposition -> Bool
 permeable rows =  Water `elem` bottomRow
-    where bottomRow = foldl percolate inputWater rows
+    where bottomRow = foldl percolateDown inputWater rows
           inputWater = replicate rowLen Water
           rowLen = length $ head rows
 
-percolate :: Row -> Row -> Row   
-percolate upper lower = zipWith flow (fillSiblings upper) lower
+percolateDown :: Row -> Row -> Row   
+percolateDown upper lower = zipWith flow (fillSiblings upper) lower
 
 fillSiblings :: Row -> Row
 fillSiblings = fillRight . fillLeft
 
 fillLeft :: Row -> Row
-fillLeft = until (\x -> fill x == x) fill
-    where fill = scanl1 flow     
+fillLeft = scanl1 flow
 
 fillRight :: Row -> Row
 fillRight =  reverse . fillLeft . reverse     
