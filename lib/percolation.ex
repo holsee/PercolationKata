@@ -10,10 +10,12 @@ defmodule Percolation do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
+    ref = make_ref
+
     children = [
       # Define workers and child supervisors to be supervised
       # worker(Percolation.Worker, [arg1, arg2, arg3])
-      worker(Percolation.Percolator, []),
+      worker(Percolation.Percolator, [ref]),
       supervisor(Percolation.CellSupervisor, [])
     ]
 

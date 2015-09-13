@@ -2,6 +2,7 @@ defmodule Percolation.Cell do
   use GenServer
   alias __MODULE__
   defstruct percolator: nil,
+            ref: nil,
             row_index: nil,
             cell_index: nil,
             cell_content: nil,
@@ -18,14 +19,15 @@ defmodule Percolation.Cell do
     GenServer.cast(target_cell_name, {:is_cell_open, from})
   end
 
-  def start_link(percolator, row_index, cell_index, cell_content) do
-    name = cell_name(row_index, cell_index)
-    GenServer.start_link(__MODULE__, [percolator, row_index, cell_index, cell_content], name: {:local, name})
+  def start_link(ref, percolator, row_index, cell_index, cell_content) do
+    name = cell_name(ref, row_index, cell_index)
+    GenServer.start_link(__MODULE__, [ref, percolator, row_index, cell_index, cell_content], name: {:local, name})
   end
 
-  def init([percolator, row_index, cell_index, cell_content]) do
+  def init([ref, percolator, row_index, cell_index, cell_content]) do
     state = %Cell{
       percolator: percolator,
+      ref: ref,
       row_index: row_index,
       cell_index: cell_index,
       cell_content: cell_content,
@@ -45,13 +47,13 @@ defmodule Percolation.Cell do
   def handle_cast(:calculate_status, state) do
     # ask left, right, and top neighbours to tell this cell what they contain
     if state.row_index > 0 do
-      cell_open?(self, cell_name(state.row_index - 1, state.cell_index))
+      cell_open?(self, cell_name(state.ref, state.row_index - 1, state.cell_index))
     end
     if state.cell_index > 0 do
-      cell_open?(self, cell_name(state.row_index, state.cell_index - 1))
+      cell_open?(self, cell_name(state.ref, state.row_index, state.cell_index - 1))
     end
     if state.cell_index < 4 do
-      cell_open?(self, cell_name(state.row_index, state.cell_index + 1))
+      cell_open?(self, cell_name(state.ref, state.row_index, state.cell_index + 1))
     end
     {:noreply, state}
   end
@@ -89,7 +91,7 @@ defmodule Percolation.Cell do
     # don't know enough to reply yet so do nothing
   end
 
-  defp cell_name(row_index, cell_index), do: :"cell_#{row_index}_#{cell_index}"
+  defp cell_name(ref, row_index, cell_index), do: :"#{inspect ref}_cell_#{row_index}_#{cell_index}"
 
   defp left_cell_state(_cell_index = 0), do: :blocked
   defp left_cell_state(_), do: :unknown

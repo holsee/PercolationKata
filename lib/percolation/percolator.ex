@@ -1,22 +1,22 @@
 defmodule Percolation.Percolator do
   use GenServer
   alias __MODULE__
-  defstruct rows: [], from: nil
+  defstruct ref: nil, from: nil, rows: []
 
   def permeable?(material) do
     GenServer.call __MODULE__, {:test_material, material}
   end
 
-  def start_link do
-    GenServer.start_link __MODULE__, [], name: __MODULE__
+  def start_link(ref) do
+    GenServer.start_link __MODULE__, [ref], name: __MODULE__
   end
 
-  def init([]) do
-    {:ok, %Percolator{}}
+  def init([ref]) do
+    {:ok, %Percolator{ref: ref}}
   end
 
   def handle_call({:test_material, material}, from, state) do
-    state = %{state | rows: setup_cells(material) }
+    state = %{state | rows: setup_cells(state.ref, material) }
     state = %{state | from: from}
     GenServer.cast __MODULE__, :run
     {:noreply, state}
@@ -43,14 +43,14 @@ defmodule Percolation.Percolator do
     {:noreply, state}
   end
 
-  defp setup_cells(material) do
+  defp setup_cells(ref, material) do
     material |> Enum.with_index |> Enum.map(fn({row, row_index}) ->
       row |> Enum.with_index |> Enum.map(fn({cell, cell_index}) ->
         cell_content = case cell do
           1 -> :solid
           0 -> :space
         end
-        {:ok, pid} = Percolation.CellSupervisor.add_cell(self, row_index, cell_index, cell_content)
+        {:ok, pid} = Percolation.CellSupervisor.add_cell(ref, self, row_index, cell_index, cell_content)
         {:unknown, pid}
       end)
     end)

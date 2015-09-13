@@ -1,8 +1,8 @@
 defmodule Percolation.CellSupervisor do
   use Supervisor
 
-  def add_cell(percolator, row_index, cell_index, cell_content) do
-    Supervisor.start_child(__MODULE__, [percolator, row_index, cell_index, cell_content])
+  def add_cell(ref, percolator, row_index, cell_index, cell_content) do
+    Supervisor.start_child(__MODULE__, [ref, percolator, row_index, cell_index, cell_content])
   end
 
   def start_link do
