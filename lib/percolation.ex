@@ -13,10 +13,7 @@ defmodule Percolation do
     ref = make_ref
 
     children = [
-      # Define workers and child supervisors to be supervised
-      # worker(Percolation.Worker, [arg1, arg2, arg3])
-      worker(Percolation.Percolator, [ref]),
-      supervisor(Percolation.CellSupervisor, [])
+      supervisor(Percolation.PercolatorSupervisor, [ref])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
