@@ -1,6 +1,10 @@
 defmodule Percolation do
   use Application
 
+  def permeable?(material) do
+    Percolation.Percolator.permeable?(material)
+  end
+
   # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
@@ -9,6 +13,8 @@ defmodule Percolation do
     children = [
       # Define workers and child supervisors to be supervised
       # worker(Percolation.Worker, [arg1, arg2, arg3])
+      worker(Percolation.Percolator, []),
+      supervisor(Percolation.CellSupervisor, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
