@@ -8,7 +8,7 @@ defmodule Percolation.Percolator do
   end
 
   def start_link(ref) do
-    GenServer.start_link __MODULE__, [ref], name: {:local, name(ref)}
+    GenServer.start_link __MODULE__, [ref], name: name(ref)
   end
 
   def init([ref]) do

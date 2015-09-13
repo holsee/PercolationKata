@@ -5,7 +5,7 @@ defmodule Percolation do
     ref = make_ref
     {:ok, pid} = Supervisor.start_child(Percolation.Supervisor, [ref])
     permeable = Percolation.Percolator.permeable?(ref, material)
-    Supervisor.terminate_child(Percolation.Supervisor, pid)
+    :ok = Supervisor.terminate_child(Percolation.Supervisor, pid)
     permeable
   end
 

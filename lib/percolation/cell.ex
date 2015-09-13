@@ -21,7 +21,7 @@ defmodule Percolation.Cell do
 
   def start_link(ref, percolator, row_index, cell_index, cell_content) do
     name = cell_name(ref, row_index, cell_index)
-    GenServer.start_link(__MODULE__, [ref, percolator, row_index, cell_index, cell_content], name: {:local, name})
+    GenServer.start_link(__MODULE__, [ref, percolator, row_index, cell_index, cell_content], name: name)
   end
 
   def init([ref, percolator, row_index, cell_index, cell_content]) do

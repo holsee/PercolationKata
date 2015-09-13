@@ -6,7 +6,7 @@ defmodule Percolation.CellSupervisor do
   end
 
   def start_link(ref) do
-    Supervisor.start_link(__MODULE__, [], name: {:local, name(ref)})
+    Supervisor.start_link(__MODULE__, [], name: name(ref))
   end
 
   def init([]) do
