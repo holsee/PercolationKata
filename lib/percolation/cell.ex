@@ -3,8 +3,8 @@ defmodule Percolation.Cell do
   alias __MODULE__
   defstruct percolator: nil,
             ref: nil,
-            row_index: nil,
-            cell_index: nil,
+            row: nil,
+            column: nil,
             cell_content: nil,
             left_cell: nil,
             right_cell: nil,
@@ -19,21 +19,21 @@ defmodule Percolation.Cell do
     GenServer.cast(target_cell_name, {:is_cell_open, from})
   end
 
-  def start_link(ref, percolator, row_index, cell_index, cell_content) do
-    name = cell_name(ref, row_index, cell_index)
-    GenServer.start_link(__MODULE__, [ref, percolator, row_index, cell_index, cell_content], name: name)
+  def start_link(ref, percolator, row, column, cell_content) do
+    name = cell_name(ref, row, column)
+    GenServer.start_link(__MODULE__, [ref, percolator, row, column, cell_content], name: name)
   end
 
-  def init([ref, percolator, row_index, cell_index, cell_content]) do
+  def init([ref, percolator, row, column, cell_content]) do
     state = %Cell{
       percolator: percolator,
       ref: ref,
-      row_index: row_index,
-      cell_index: cell_index,
+      row: row,
+      column: column,
       cell_content: cell_content,
-      left_cell: left_cell_state(cell_index),
-      right_cell: right_cell_state(cell_index),
-      above_cell: above_cell_state(row_index),
+      left_cell: left_cell_state(column),
+      right_cell: right_cell_state(column),
+      above_cell: above_cell_state(row),
       blocked: blocked_state(cell_content)
     }
 
@@ -41,19 +41,19 @@ defmodule Percolation.Cell do
   end
 
   def handle_cast(:calculate_status, %{cell_content: :solid} = state) do
-    GenServer.cast(state.percolator, {:update_status, state.row_index, state.cell_index, :blocked})
+    GenServer.cast(state.percolator, {:update_status, state.row, state.column, :blocked})
     {:noreply, state}
   end
   def handle_cast(:calculate_status, state) do
     # ask left, right, and top neighbours to tell this cell what they contain
-    if state.row_index > 0 do
-      cell_open?(self, cell_name(state.ref, state.row_index - 1, state.cell_index))
+    if state.row > 0 do
+      cell_open?(self, cell_name(state.ref, state.row - 1, state.column))
     end
-    if state.cell_index > 0 do
-      cell_open?(self, cell_name(state.ref, state.row_index, state.cell_index - 1))
+    if state.column > 0 do
+      cell_open?(self, cell_name(state.ref, state.row, state.column - 1))
     end
-    if state.cell_index < 4 do
-      cell_open?(self, cell_name(state.ref, state.row_index, state.cell_index + 1))
+    if state.column < 4 do
+      cell_open?(self, cell_name(state.ref, state.row, state.column + 1))
     end
     {:noreply, state}
   end
@@ -63,43 +63,46 @@ defmodule Percolation.Cell do
       :space -> :open
       :solid -> :blocked
     end
-    GenServer.cast(from, {:is_cell_open_reply, state.row_index, state.cell_index, cell_open})
+    GenServer.cast(from, {:is_cell_open_reply, state.row, state.column, cell_open})
     {:noreply, state}
   end
 
-  def handle_cast({:is_cell_open_reply, neighbour_row, neighbour_cell, cell_open}, %{row_index: row_index, cell_index: cell_index} = state) do
+  def handle_cast({:is_cell_open_reply, neighbour_row, neighbour_cell, cell_open}, %{row: row, column: column} = state) do
     state = case cell_open do
-      cell_open when neighbour_row == row_index - 1 and neighbour_cell == cell_index ->
+      cell_open when neighbour_row == row - 1 and neighbour_cell == column ->
         %{state | above_cell: cell_open}
-      cell_open when neighbour_row == row_index and neighbour_cell == cell_index - 1 ->
+      cell_open when neighbour_row == row and neighbour_cell == column - 1 ->
         %{state | left_cell: cell_open}
-      cell_open when neighbour_row == row_index and neighbour_cell == cell_index + 1 ->
+      cell_open when neighbour_row == row and neighbour_cell == column + 1 ->
         %{state | right_cell: cell_open}
     end
-    reply_to_percolator(state)
+    state = reply_to_percolator(state)
     {:noreply, state}
   end
 
+  # if we've set blocked to true or false we've notified the percolator and don't need to do anything else
+  defp reply_to_percolator(%{blocked: blocked} = state) when blocked != :unknown, do: state
   defp reply_to_percolator(%{left_cell: :blocked, right_cell: :blocked, above_cell: :blocked} = state) do
-    GenServer.cast(state.percolator, {:update_status, state.row_index, state.cell_index, :blocked})
+    GenServer.cast(state.percolator, {:update_status, state.row, state.column, :blocked})
+    %{state | blocked: true}
   end
   defp reply_to_percolator(%{left_cell: left_cell, right_cell: right_cell, above_cell: above_cell} = state)
     when left_cell == :open or right_cell == :open or above_cell == :open do
-    GenServer.cast(state.percolator, {:update_status, state.row_index, state.cell_index, :open})
+    GenServer.cast(state.percolator, {:update_status, state.row, state.column, :open})
+    %{state | blocked: false}
   end
-  defp reply_to_percolator(_state) do
-    # don't know enough to reply yet so do nothing
-  end
+  # don't know enough to reply yet so do nothing
+  defp reply_to_percolator(state), do: state
 
-  defp cell_name(ref, row_index, cell_index), do: :"#{inspect ref}_cell_#{row_index}_#{cell_index}"
+  defp cell_name(ref, row, column), do: :"#{inspect ref}_cell_#{row}_#{column}"
 
-  defp left_cell_state(_cell_index = 0), do: :blocked
+  defp left_cell_state(_column = 0), do: :blocked
   defp left_cell_state(_), do: :unknown
 
-  defp right_cell_state(_cell_index = 5), do: :blocked
+  defp right_cell_state(_column = 5), do: :blocked
   defp right_cell_state(_), do: :unknown
 
-  defp above_cell_state(_row_index = 0), do: :open
+  defp above_cell_state(_row = 0), do: :open
   defp above_cell_state(_), do: :unknown
 
   defp blocked_state(:solid), do: true

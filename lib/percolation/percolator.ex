@@ -24,8 +24,8 @@ defmodule Percolation.Percolator do
 
   def handle_cast(:run, state) do
     # tell each cell to find out from it's neighbours if it's blocked
-    Enum.each(state.rows, fn(row) ->
-      row |> Enum.each(fn({_, pid} = _cell) ->
+    Enum.each(state.rows, fn(row_contents) ->
+      row_contents |> Enum.each(fn({_, pid} = _cell) ->
         Percolation.Cell.calculate_status(pid)
       end)
     end)
@@ -33,8 +33,8 @@ defmodule Percolation.Percolator do
   end
 
   def handle_cast({:update_status, row, column, status}, state) do
-    rows = List.update_at(state.rows, row, fn(row) ->
-      List.update_at(row, column, fn({_, pid}) ->
+    rows = List.update_at(state.rows, row, fn(row_contents) ->
+      List.update_at(row_contents, column, fn({_, pid}) ->
         {status, pid}
       end)
     end)
@@ -44,13 +44,13 @@ defmodule Percolation.Percolator do
   end
 
   defp setup_cells(ref, material) do
-    material |> Enum.with_index |> Enum.map(fn({row, row_index}) ->
-      row |> Enum.with_index |> Enum.map(fn({cell, cell_index}) ->
+    material |> Enum.with_index |> Enum.map(fn({row_contents, row}) ->
+      row_contents |> Enum.with_index |> Enum.map(fn({cell, column}) ->
         cell_content = case cell do
           1 -> :solid
           0 -> :space
         end
-        {:ok, pid} = Percolation.CellSupervisor.add_cell(ref, self, row_index, cell_index, cell_content)
+        {:ok, pid} = Percolation.CellSupervisor.add_cell(ref, self, row, column, cell_content)
         {:unknown, pid}
       end)
     end)
@@ -64,16 +64,16 @@ defmodule Percolation.Percolator do
   end
 
   defp complete?(rows) do
-    Enum.all? rows, fn(row) ->
-      Enum.all? row, fn({status, _}) ->
+    Enum.all? rows, fn(row_contents) ->
+      Enum.all? row_contents, fn({status, _}) ->
         status != :unknown
       end
     end
   end
 
   def is_permeable?(rows) do
-    Enum.all? rows, fn(row) ->
-      Enum.any? row, fn({status, _}) ->
+    Enum.all? rows, fn(row_contents) ->
+      Enum.any? row_contents, fn({status, _}) ->
         status == :open
       end
     end
