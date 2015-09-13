@@ -3,12 +3,12 @@ defmodule Percolation.Percolator do
   alias __MODULE__
   defstruct ref: nil, from: nil, rows: []
 
-  def permeable?(material) do
-    GenServer.call __MODULE__, {:test_material, material}
+  def permeable?(ref, material) do
+    GenServer.call name(ref), {:test_material, material}
   end
 
   def start_link(ref) do
-    GenServer.start_link __MODULE__, [ref], name: __MODULE__
+    GenServer.start_link __MODULE__, [ref], name: {:local, name(ref)}
   end
 
   def init([ref]) do
@@ -18,7 +18,7 @@ defmodule Percolation.Percolator do
   def handle_call({:test_material, material}, from, state) do
     state = %{state | rows: setup_cells(state.ref, material) }
     state = %{state | from: from}
-    GenServer.cast __MODULE__, :run
+    GenServer.cast name(state.ref), :run
     {:noreply, state}
   end
 
@@ -59,7 +59,6 @@ defmodule Percolation.Percolator do
   def check(state) do
     if complete?(state.rows) do
       permeable = is_permeable?(state.rows)
-      finished(state.rows)
       GenServer.reply(state.from, permeable)
     end
   end
@@ -80,11 +79,5 @@ defmodule Percolation.Percolator do
     end
   end
 
-  defp finished(rows) do
-    Enum.each rows, fn(row) ->
-      Enum.each row, fn({_, pid}) ->
-        :ok = Supervisor.terminate_child(Percolation.CellSupervisor, pid)
-      end
-    end
-  end
+  defp name(ref), do: :"percolator_#{inspect ref}"
 end

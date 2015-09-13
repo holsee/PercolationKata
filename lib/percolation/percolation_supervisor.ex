@@ -8,7 +8,7 @@ defmodule Percolation.PercolatorSupervisor do
   def init([ref]) do
     children = [
       worker(Percolation.Percolator, [ref]),
-      supervisor(Percolation.CellSupervisor, [])
+      supervisor(Percolation.CellSupervisor, [ref])
     ]
 
     opts = [strategy: :one_for_one]
